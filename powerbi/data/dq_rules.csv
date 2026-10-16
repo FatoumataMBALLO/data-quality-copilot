@@ -3,12 +3,12 @@ COMP_01,age manquant,Complétude,critique,0.5,L'âge ne doit jamais être NULL.,
 COMP_02,job manquant,Complétude,majeure,1.0,La profession ne doit pas être NULL.,SELECT row_id FROM injected_bank WHERE job IS NULL
 COMP_03,education manquante,Complétude,majeure,1.0,Le niveau d'études ne doit pas être NULL.,SELECT row_id FROM injected_bank WHERE education IS NULL
 COMP_04,default = unknown,Complétude,mineure,10.0,Part de valeurs 'unknown' dans default (manque déjà présent dans le jeu d'origine).,"SELECT row_id FROM injected_bank WHERE ""default"" = 'unknown'"
-VALID_01,age hors plage 18-100,Validité,critique,0.5,L'âge doit être compris entre 18 et 100.,"SELECT row_id FROM injected_bank
+VALID_01,age hors plage 18-100,Validité,critique,0.1,L'âge doit être compris entre 18 et 100.,"SELECT row_id FROM injected_bank
 WHERE age IS NOT NULL AND (age < 18 OR age > 100)"
 VALID_02,marital hors valeurs autorisées,Validité,majeure,0.5,"marital doit valoir married, single, divorced ou unknown (minuscules, sans espaces).","SELECT row_id FROM injected_bank
 WHERE marital IS NOT NULL
   AND marital NOT IN ('married', 'single', 'divorced', 'unknown')"
-VALID_03,month invalide,Validité,majeure,0.5,month doit être une abréviation de mois à 3 lettres.,"SELECT row_id FROM injected_bank
+VALID_03,month invalide,Validité,majeure,0.1,month doit être une abréviation de mois à 3 lettres.,"SELECT row_id FROM injected_bank
 WHERE month IS NOT NULL
   AND month NOT IN ('jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec')"
 COH_01,duration = 0 mais y = yes,Cohérence,critique,0.1,Un client ne peut pas souscrire (y = yes) lors d'un appel de durée nulle.,SELECT row_id FROM injected_bank WHERE duration = 0 AND y = 'yes'

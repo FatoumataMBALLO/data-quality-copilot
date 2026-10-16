@@ -41,7 +41,7 @@ rules:
     name: "age hors plage 18-100"
     dimension: "Validité"
     severity: critique
-    threshold_pct: 0.5
+    threshold_pct: 0.1
     description: "L'âge doit être compris entre 18 et 100."
     sql: |
       SELECT row_id FROM injected_bank
@@ -62,7 +62,7 @@ rules:
     name: "month invalide"
     dimension: "Validité"
     severity: majeure
-    threshold_pct: 0.5
+    threshold_pct: 0.1
     description: "month doit être une abréviation de mois à 3 lettres."
     sql: |
       SELECT row_id FROM injected_bank
