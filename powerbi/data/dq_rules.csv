@@ -1,0 +1,32 @@
+rule_id,rule_name,dimension,severity,threshold_pct,description,sql_query
+COMP_01,age manquant,Complétude,critique,0.5,L'âge ne doit jamais être NULL.,SELECT row_id FROM injected_bank WHERE age IS NULL
+COMP_02,job manquant,Complétude,majeure,1.0,La profession ne doit pas être NULL.,SELECT row_id FROM injected_bank WHERE job IS NULL
+COMP_03,education manquante,Complétude,majeure,1.0,Le niveau d'études ne doit pas être NULL.,SELECT row_id FROM injected_bank WHERE education IS NULL
+COMP_04,default = unknown,Complétude,mineure,10.0,Part de valeurs 'unknown' dans default (manque déjà présent dans le jeu d'origine).,"SELECT row_id FROM injected_bank WHERE ""default"" = 'unknown'"
+VALID_01,age hors plage 18-100,Validité,critique,0.5,L'âge doit être compris entre 18 et 100.,"SELECT row_id FROM injected_bank
+WHERE age IS NOT NULL AND (age < 18 OR age > 100)"
+VALID_02,marital hors valeurs autorisées,Validité,majeure,0.5,"marital doit valoir married, single, divorced ou unknown (minuscules, sans espaces).","SELECT row_id FROM injected_bank
+WHERE marital IS NOT NULL
+  AND marital NOT IN ('married', 'single', 'divorced', 'unknown')"
+VALID_03,month invalide,Validité,majeure,0.5,month doit être une abréviation de mois à 3 lettres.,"SELECT row_id FROM injected_bank
+WHERE month IS NOT NULL
+  AND month NOT IN ('jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec')"
+COH_01,duration = 0 mais y = yes,Cohérence,critique,0.1,Un client ne peut pas souscrire (y = yes) lors d'un appel de durée nulle.,SELECT row_id FROM injected_bank WHERE duration = 0 AND y = 'yes'
+COH_02,pdays renseigné mais previous = 0,Cohérence,critique,0.1,"Si le client a déjà été contacté (pdays < 999), previous doit être supérieur à 0.",SELECT row_id FROM injected_bank WHERE pdays < 999 AND previous = 0
+COH_03,pdays = 999 mais previous > 0,Cohérence,majeure,1.0,"pdays = 999 signifie jamais contacté, ce qui contredit previous > 0 (anomalie présente dans les données d'origine).",SELECT row_id FROM injected_bank WHERE pdays = 999 AND previous > 0
+PLAUS_01,campaign extrême (3 x IQR),Plausibilité,mineure,5.0,campaign au-delà de Q3 + 3 x IQR.,"SELECT row_id FROM injected_bank
+WHERE campaign > (
+  SELECT quantile_cont(campaign, 0.75)
+         + 3 * (quantile_cont(campaign, 0.75) - quantile_cont(campaign, 0.25))
+  FROM injected_bank)"
+PLAUS_02,duration extrême (3 x IQR),Plausibilité,mineure,5.0,duration au-delà de Q3 + 3 x IQR.,"SELECT row_id FROM injected_bank
+WHERE duration > (
+  SELECT quantile_cont(duration, 0.75)
+         + 3 * (quantile_cont(duration, 0.75) - quantile_cont(duration, 0.25))
+  FROM injected_bank)"
+UNIQ_01,lignes dupliquées,Unicité,majeure,0.1,Lignes strictement identiques (hors row_id) : on signale toutes les copies après la première.,"SELECT row_id FROM injected_bank
+WHERE row_id NOT IN (
+  SELECT rid FROM (
+    SELECT MIN(row_id) AS rid, * EXCLUDE (row_id)
+    FROM injected_bank
+    GROUP BY ALL))"
