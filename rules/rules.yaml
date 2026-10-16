@@ -1,0 +1,140 @@
+rules:
+  # ---------- Complétude ----------
+  - id: COMP_01
+    name: "age manquant"
+    dimension: "Complétude"
+    severity: critique
+    threshold_pct: 0.5
+    description: "L'âge ne doit jamais être NULL."
+    sql: |
+      SELECT row_id FROM injected_bank WHERE age IS NULL
+
+  - id: COMP_02
+    name: "job manquant"
+    dimension: "Complétude"
+    severity: majeure
+    threshold_pct: 1.0
+    description: "La profession ne doit pas être NULL."
+    sql: |
+      SELECT row_id FROM injected_bank WHERE job IS NULL
+
+  - id: COMP_03
+    name: "education manquante"
+    dimension: "Complétude"
+    severity: majeure
+    threshold_pct: 1.0
+    description: "Le niveau d'études ne doit pas être NULL."
+    sql: |
+      SELECT row_id FROM injected_bank WHERE education IS NULL
+
+  - id: COMP_04
+    name: "default = unknown"
+    dimension: "Complétude"
+    severity: mineure
+    threshold_pct: 10.0
+    description: "Part de valeurs 'unknown' dans default (manque déjà présent dans le jeu d'origine)."
+    sql: |
+      SELECT row_id FROM injected_bank WHERE "default" = 'unknown'
+
+  # ---------- Validité ----------
+  - id: VALID_01
+    name: "age hors plage 18-100"
+    dimension: "Validité"
+    severity: critique
+    threshold_pct: 0.5
+    description: "L'âge doit être compris entre 18 et 100."
+    sql: |
+      SELECT row_id FROM injected_bank
+      WHERE age IS NOT NULL AND (age < 18 OR age > 100)
+
+  - id: VALID_02
+    name: "marital hors valeurs autorisées"
+    dimension: "Validité"
+    severity: majeure
+    threshold_pct: 0.5
+    description: "marital doit valoir married, single, divorced ou unknown (minuscules, sans espaces)."
+    sql: |
+      SELECT row_id FROM injected_bank
+      WHERE marital IS NOT NULL
+        AND marital NOT IN ('married', 'single', 'divorced', 'unknown')
+
+  - id: VALID_03
+    name: "month invalide"
+    dimension: "Validité"
+    severity: majeure
+    threshold_pct: 0.5
+    description: "month doit être une abréviation de mois à 3 lettres."
+    sql: |
+      SELECT row_id FROM injected_bank
+      WHERE month IS NOT NULL
+        AND month NOT IN ('jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec')
+
+  # ---------- Cohérence ----------
+  - id: COH_01
+    name: "duration = 0 mais y = yes"
+    dimension: "Cohérence"
+    severity: critique
+    threshold_pct: 0.1
+    description: "Un client ne peut pas souscrire (y = yes) lors d'un appel de durée nulle."
+    sql: |
+      SELECT row_id FROM injected_bank WHERE duration = 0 AND y = 'yes'
+
+  - id: COH_02
+    name: "pdays renseigné mais previous = 0"
+    dimension: "Cohérence"
+    severity: critique
+    threshold_pct: 0.1
+    description: "Si le client a déjà été contacté (pdays < 999), previous doit être supérieur à 0."
+    sql: |
+      SELECT row_id FROM injected_bank WHERE pdays < 999 AND previous = 0
+
+  - id: COH_03
+    name: "pdays = 999 mais previous > 0"
+    dimension: "Cohérence"
+    severity: majeure
+    threshold_pct: 1.0
+    description: "pdays = 999 signifie jamais contacté, ce qui contredit previous > 0 (anomalie présente dans les données d'origine)."
+    sql: |
+      SELECT row_id FROM injected_bank WHERE pdays = 999 AND previous > 0
+
+  # ---------- Plausibilité ----------
+  - id: PLAUS_01
+    name: "campaign extrême (3 x IQR)"
+    dimension: "Plausibilité"
+    severity: mineure
+    threshold_pct: 5.0
+    description: "campaign au-delà de Q3 + 3 x IQR."
+    sql: |
+      SELECT row_id FROM injected_bank
+      WHERE campaign > (
+        SELECT quantile_cont(campaign, 0.75)
+               + 3 * (quantile_cont(campaign, 0.75) - quantile_cont(campaign, 0.25))
+        FROM injected_bank)
+
+  - id: PLAUS_02
+    name: "duration extrême (3 x IQR)"
+    dimension: "Plausibilité"
+    severity: mineure
+    threshold_pct: 5.0
+    description: "duration au-delà de Q3 + 3 x IQR."
+    sql: |
+      SELECT row_id FROM injected_bank
+      WHERE duration > (
+        SELECT quantile_cont(duration, 0.75)
+               + 3 * (quantile_cont(duration, 0.75) - quantile_cont(duration, 0.25))
+        FROM injected_bank)
+
+  # ---------- Unicité ----------
+  - id: UNIQ_01
+    name: "lignes dupliquées"
+    dimension: "Unicité"
+    severity: majeure
+    threshold_pct: 0.1
+    description: "Lignes strictement identiques (hors row_id) : on signale toutes les copies après la première."
+    sql: |
+      SELECT row_id FROM injected_bank
+      WHERE row_id NOT IN (
+        SELECT rid FROM (
+          SELECT MIN(row_id) AS rid, * EXCLUDE (row_id)
+          FROM injected_bank
+          GROUP BY ALL))
