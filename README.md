@@ -148,4 +148,4 @@ data-quality-copilot/
 
 ## Source des données
 
-Moro, S., Rita, P. et Cortez, P. (2014), *Bank Marketing*, UCI Machine Learning Repository.
+Moro, S., Cortez, P. et Rita, P. (2014), *A Data-Driven Approach to Predict the Success of Bank Telemarketing*, Decision Support Systems, 62:22-31. Jeu de données *Bank Marketing*, UCI Machine Learning Repository.
