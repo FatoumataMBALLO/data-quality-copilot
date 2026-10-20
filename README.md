@@ -69,3 +69,31 @@ Pour chaque règle, j'ai appliqué la même requête aux données brutes afin de
 ### Détection des anomalies injectées
 
 Un test automatique prend chacune des 11 familles d'anomalies du journal d'injection et vérifie que la règle correspondante les retrouve : **100 % sont détectées**. Les 16 tests du projet passent (`python -m pytest -q`).
+
+## Explications générées
+
+Pour chaque règle en alerte, `src/explain.py` produit trois rubriques (cause probable, impact, correction suggérée) à partir des résultats des contrôles. Elles sont enregistrées dans la table `dq_explanations`, dans `powerbi/data/dq_explanations.csv` et dans [`docs/explications.md`](docs/explications.md).
+
+Exemple, pour la règle COH_03 :
+
+> **COH_03 : pdays = 999 mais previous > 0 (majeure)**
+>
+> - **Cause probable** : code de substitution du délai utilisé alors que des contacts précédents sont enregistrés, déjà présent dans la source. Sur 4133 lignes en erreur, 4110 sont déjà dans les données brutes et 23 sont apparues ensuite.
+> - **Impact** : les statistiques sur le délai depuis le dernier contact sont peu fiables pour ces clients. Taux observé : 9,99 %, seuil d'alerte : 1 %.
+> - **Correction suggérée** : documenter l'incohérence et traiter ces lignes à part dans les analyses sur le délai. Lignes à examiner en premier (row_id) : 24014, 24020, 24077, 24103, 24114.
+
+**Ces explications ne sont pas produites par un modèle d'IA générative.** Les phrases sont rédigées à l'avance pour chaque règle, et seuls les chiffres viennent des résultats. J'avais prévu d'utiliser une API d'IA gratuite (GitHub Models), mais ce service a été retiré le 30 juillet 2026. Le choix a donc été de livrer des explications fiables plutôt qu'un appel à un service payant.
+
+Le script est prévu pour accueillir un vrai modèle : il suffirait de remplacer la fonction `generer()`. Il comporte déjà un **contrôle des chiffres** : le texte doit contenir le nombre d'erreurs et le taux de la règle, et aucun autre nombre n'est accepté en dehors de ceux des résultats. Ce garde-fou est destiné à détecter un chiffre inventé par un modèle. Avec les phrases fixes actuelles, il sert surtout à repérer une erreur dans les modèles de texte.
+
+## Limites connues
+
+- **Pas d'IA générative** : voir la section précédente. Les explications sont des modèles de phrases complétés par les chiffres des contrôles.
+- **Anomalies synthétiques** : les anomalies injectées sont artificielles et la graine est fixe (`42`). Les seuils d'alerte sont des choix personnels, pas des normes métier.
+- **Colonnes numériques** : elles gardent leur type, donc je n'ai pas pu y injecter de texte cassé (par exemple `"abc"` dans `age`). Les erreurs de format portent sur les colonnes texte.
+- **Séparation structurel / injecté** : un doublon injecté est une copie d'une ligne d'origine, qui en reprend les défauts (par exemple `unknown` dans `default`). Ces copies sont comptées comme « injectées » pour COMP_04 (40 lignes), COH_03 (23) et, dans une moindre mesure, PLAUS_01 et PLAUS_02.
+- **Cumuls par règle** : une même ligne peut déclencher plusieurs règles. Les cartes « erreurs structurelles » et « erreurs injectées » sont donc des cumuls par règle, pas des nombres de lignes. Le nombre de lignes avec au moins une erreur est donné séparément (15 958).
+- **Un seul run** : l'historique contient pour l'instant une seule exécution. Le suivi dans le temps n'est donc pas encore démontré, et la table `dq_origin` n'est reliée à `dq_runs` que via les règles dans Power BI.
+- **Cause de `pdays = 999`** : pour 4 110 clients, le délai est codé 999 (« jamais contacté ») alors que `previous` indique des contacts précédents. Je n'en connais pas la cause, et je ne la suppose pas.
+- **Power BI** : les CSV sont chargés à la main, il n'y a pas d'actualisation automatique.
+- **Base DuckDB** : le fichier `data/dq.duckdb` n'est pas versionné. Il se recrée en relançant les scripts dans l'ordre.
