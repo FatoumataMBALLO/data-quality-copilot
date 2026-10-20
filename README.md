@@ -97,3 +97,55 @@ Le script est prévu pour accueillir un vrai modèle : il suffirait de remplacer
 - **Cause de `pdays = 999`** : pour 4 110 clients, le délai est codé 999 (« jamais contacté ») alors que `previous` indique des contacts précédents. Je n'en connais pas la cause, et je ne la suppose pas.
 - **Power BI** : les CSV sont chargés à la main, il n'y a pas d'actualisation automatique.
 - **Base DuckDB** : le fichier `data/dq.duckdb` n'est pas versionné. Il se recrée en relançant les scripts dans l'ordre.
+
+## Lancer le projet
+
+Le projet a été développé dans GitHub Codespaces (Python 3.14, Linux). Les commandes ci-dessous supposent un terminal Linux ou macOS.
+
+```bash
+git clone https://github.com/FatoumataMBALLO/data-quality-copilot.git
+cd data-quality-copilot
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+bash run_all.sh
+```
+
+`run_all.sh` reconstruit tout de zéro : il supprime la base, recharge le CSV, injecte les anomalies, exécute les 13 règles, sépare les anomalies structurelles et injectées, génère les explications, puis lance les tests. L'historique des exécutions repart donc au run n°1.
+
+Pour lancer les étapes une par une :
+
+| Étape | Commande | Rôle |
+|---|---|---|
+| 1 | `python src/ingest.py` | Charge le CSV dans DuckDB (`raw_bank`) |
+| 2 | `python src/inject.py` | Crée `injected_bank` et le journal d'injection |
+| 3 | `python src/run_checks.py` | Exécute les règles, remplit `dq_rules`, `dq_runs`, `dq_results` |
+| 4 | `python src/origin.py` | Sépare anomalies structurelles et injectées (`dq_origin`) |
+| 5 | `python src/explain.py` | Génère les explications (`dq_explanations`) |
+| 6 | `python -m pytest -q` | Lance les 16 tests |
+
+`src/explore.py` et `src/preview_rules.py` sont des scripts d'exploration, utiles pour comprendre les données et tester les règles, mais non nécessaires au pipeline.
+
+### Tableau de bord Power BI
+
+Les CSV de `powerbi/data/` (`dq_rules`, `dq_runs`, `dq_results`, `dq_origin`, `dq_explanations`) sont la source du tableau de bord. Dans Power BI Desktop : **Obtenir les données** > **Texte/CSV**, puis relier `dq_results` à `dq_rules` (par `rule_id`) et à `dq_runs` (par `run_id`), et `dq_origin` à `dq_rules`. Des captures se trouvent dans `powerbi/screenshots/`.
+
+## Structure du dépôt
+
+```
+data-quality-copilot/
+├── data/raw/            # CSV d'origine, jamais modifié
+├── data/injected/       # journal d'injection (CSV)
+├── docs/                # explications générées
+├── powerbi/data/        # CSV pour Power BI
+├── powerbi/screenshots/ # captures du tableau de bord
+├── rules/rules.yaml     # définition des 13 règles
+├── src/                 # scripts Python
+├── tests/               # tests automatiques
+├── run_all.sh           # reconstruit tout le projet
+└── requirements.txt
+```
+
+## Source des données
+
+Moro, S., Rita, P. et Cortez, P. (2014), *Bank Marketing*, UCI Machine Learning Repository.

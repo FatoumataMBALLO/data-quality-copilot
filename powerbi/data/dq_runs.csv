@@ -1,2 +1,2 @@
 run_id,run_ts,table_name,total_rows,rows_with_error,clean_rows_pct,n_rules,n_alerts
-1,2026-10-16 19:34:24.131499,injected_bank,41388,15958,61.44,13,11
+1,2026-10-20 07:16:26.716205,injected_bank,41388,15958,61.44,13,11
